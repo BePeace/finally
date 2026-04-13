@@ -23,7 +23,7 @@ The user runs a single Docker command (or a provided start script). A browser op
 
 - **Watch prices stream** — prices flash green (uptick) or red (downtick) with subtle CSS animations that fade
 - **View sparkline mini-charts** — price action beside each ticker in the watchlist, accumulated on the frontend from the SSE stream since page load (sparklines fill in progressively)
-- **Click a ticker** to see a larger detailed chart in the main chart area
+- **Click a ticker** to see a larger detailed chart in the main chart area, populated from SSE price history accumulated since page load
 - **Buy and sell shares** — market orders only, instant fill at current price, no fees, no confirmation dialog
 - **Monitor their portfolio** — a heatmap (treemap) showing positions sized by weight and colored by P&L, plus a P&L chart tracking total portfolio value over time
 - **View a positions table** — ticker, quantity, average cost, current price, unrealized P&L, % change
@@ -178,6 +178,7 @@ Both the simulator and the Massive client implement the same abstract interface.
 - Long-lived SSE connection; client uses native `EventSource` API
 - Server pushes price updates **only when a price changes**, for **watchlist tickers only** — events are not repeated if prices are unchanged (e.g., between Massive API polls)
 - Each SSE event contains: `ticker`, `price`, `previous_price`, `previous_close`, `change_pct` (daily, vs previous close), `timestamp`, and `direction` (`"up"` | `"down"`)
+- The SSE stream is **watchlist-aware**: when the user adds or removes a ticker, the backend dynamically updates which tickers are streamed on the existing connection — no reconnect needed
 - Client handles reconnection automatically (EventSource has built-in retry)
 
 ---
@@ -238,7 +239,7 @@ All tables include a `user_id` column defaulting to `"default"`. This is hardcod
 - `user_id` TEXT (default: `"default"`)
 - `role` TEXT (`"user"` or `"assistant"`)
 - `content` TEXT
-- `actions` TEXT (JSON — trades executed, watchlist changes made; null for user messages)
+- `actions` TEXT (JSON — trades executed, watchlist changes made; null for user messages). The frontend reads this field to render inline confirmations (e.g. "Bought 5 AAPL @ $191.20") directly in the chat bubble for the assistant's message.
 - `created_at` TEXT (ISO timestamp)
 
 ### Default Seed Data
@@ -373,6 +374,8 @@ When `LLM_MOCK=true`, the backend returns the following deterministic mock respo
 }
 ```
 
+If the mock trade fails validation (e.g. insufficient cash), the backend still returns the mock `message` but includes an `error` field on the failed trade entry so the frontend can display it inline.
+
 This fixed response enables:
 - Fast, free, reproducible E2E tests (trade execution and message rendering are both exercised)
 - Development without an API key
@@ -391,7 +394,7 @@ The frontend is a single-page application with a dense, terminal-inspired layout
 - **Portfolio heatmap** — treemap visualization where each rectangle is a position, sized by portfolio weight, colored by P&L (green = profit, red = loss)
 - **P&L chart** — line chart showing total portfolio value over time, using data from `portfolio_snapshots`
 - **Positions table** — tabular view of all positions: ticker, quantity, avg cost, current price, unrealized P&L, % change
-- **Trade bar** — simple input area: ticker field, quantity field, buy button, sell button. Market orders, instant fill. Clicking a ticker in the watchlist auto-populates the ticker field.
+- **Trade bar** — simple input area: ticker field, quantity field (supports fractional shares, e.g. 0.5), buy button, sell button. Market orders, instant fill. Clicking a ticker in the watchlist auto-populates the ticker field.
 - **AI chat panel** — docked/collapsible sidebar. Message input, scrolling conversation history, loading indicator while waiting for LLM response. Trade executions and watchlist changes shown inline as confirmations.
 - **Header** — portfolio total value (updating live), connection status indicator, cash balance
 
