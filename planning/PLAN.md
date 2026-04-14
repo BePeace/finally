@@ -304,6 +304,7 @@ Only positions with `quantity > 0` are included. `total_value` = `cash_balance` 
 - Buy orders require sufficient cash at the current cached market price
 - Sell orders require sufficient owned quantity in the current position
 - Validation errors return structured error payloads that the frontend can render inline
+- Trade execution is wrapped in a SQLite transaction: cash debit/credit and position update are atomic. Concurrent requests for the same user are serialized via a per-user asyncio lock to prevent double-spend.
 
 ### Watchlist
 | Method | Path | Description |
@@ -315,6 +316,7 @@ Only positions with `quantity > 0` are included. `total_value` = `cash_balance` 
 ### Chat
 | Method | Path | Description |
 |--------|------|-------------|
+| GET | `/api/chat/history` | Recent chat messages (last 50, chronological order) |
 | POST | `/api/chat` | Send a message, receive complete JSON response (message + executed actions) |
 
 **`POST /api/chat` request shape:**
