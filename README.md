@@ -1,55 +1,54 @@
 # FinAlly — AI Trading Workstation
 
-An AI-powered trading workstation that streams live market data, simulates portfolio trading, and integrates an LLM chat assistant that can analyze positions and execute trades via natural language.
-
-Built entirely by coding agents as a capstone project for an agentic AI coding course.
-
-## Features
-
-- Live price streaming via SSE with green/red flash animations
-- Simulated portfolio — $10k virtual cash, market orders, instant fills
-- Portfolio visualizations — heatmap (treemap), P&L chart, positions table
-- AI chat assistant — analyzes holdings, suggests and auto-executes trades
-- Watchlist management — track tickers manually or via AI
-- Dark terminal aesthetic — Bloomberg-inspired, data-dense layout
+A Bloomberg-terminal-inspired trading simulator with live market data and an AI assistant that can analyze your portfolio and execute trades via natural language.
 
 ## Quick Start
 
 ```bash
 cp .env.example .env
-# Add OPENROUTER_API_KEY to .env
-
-./scripts/start_mac.sh        # macOS/Linux
-# or: scripts\start_windows.ps1  (Windows PowerShell)
-
-# Open http://localhost:8000
+# Edit .env: add OPENROUTER_API_KEY (required), MASSIVE_API_KEY (optional)
+./scripts/start_mac.sh
 ```
+
+Open [http://localhost:8000](http://localhost:8000).
+
+## Features
+
+- **Live price streaming** via SSE — prices flash green/red on change
+- **Simulated portfolio** — $10k virtual cash, market orders, instant fill
+- **Sparklines & charts** — per-ticker mini-charts and a detailed main chart
+- **Portfolio heatmap** — treemap sized by weight, colored by P&L
+- **AI chat** — ask questions, get analysis, execute trades in plain English
+
+## Architecture
+
+Single Docker container, single port (8000):
+
+- **Frontend**: Next.js static export, served by FastAPI
+- **Backend**: FastAPI + Python (uv), SQLite database
+- **Market data**: GBM simulator by default; Massive/Polygon.io API if `MASSIVE_API_KEY` is set
+- **AI**: LiteLLM → OpenRouter (Cerebras), structured outputs for trade execution
 
 ## Environment Variables
 
 | Variable | Required | Description |
 |---|---|---|
-| `OPENROUTER_API_KEY` | Yes | OpenRouter API key for AI chat |
-| `MASSIVE_API_KEY` | No | Real market data (Polygon.io); omit to use built-in simulator |
-| `LLM_MOCK` | No | `true` for deterministic mock LLM responses (testing/CI) |
+| `OPENROUTER_API_KEY` | Yes | LLM inference via OpenRouter |
+| `MASSIVE_API_KEY` | No | Real market data; simulator used if unset |
+| `LLM_MOCK` | No | Set `true` for deterministic mock responses (testing) |
 
-## Architecture
+## Development
 
-Single Docker container on port 8000:
+```bash
+# Backend tests
+cd backend && uv run pytest -v
 
-- **Frontend**: Next.js static export, TypeScript, Tailwind CSS
-- **Backend**: FastAPI (Python/uv), SSE streaming, SQLite
-- **AI**: LiteLLM → OpenRouter (Cerebras) with structured outputs
-- **Market data**: GBM simulator (default) or Massive API (optional)
-
-## Project Structure
-
+# Frontend
+cd frontend && npm install && npm run dev
 ```
-finally/
-├── frontend/    # Next.js static export
-├── backend/     # FastAPI uv project
-├── planning/    # Project documentation
-├── test/        # Playwright E2E tests
-├── scripts/     # Start/stop helpers
-└── db/          # SQLite volume mount (runtime)
+
+## Running Tests (E2E)
+
+```bash
+cd test && docker compose -f docker-compose.test.yml up
 ```
