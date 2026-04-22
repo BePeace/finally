@@ -5,8 +5,8 @@
         "matcher": "",
         "hooks": [
           {
-            "type": "prompt",
-            "command": "status"
+            "type": "command",
+            "command": "git status"
           }
         ]
       }
