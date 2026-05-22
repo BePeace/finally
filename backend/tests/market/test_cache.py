@@ -101,3 +101,50 @@ class TestPriceCache:
         cache = PriceCache()
         update = cache.update("AAPL", 190.12345)
         assert update.price == 190.12
+
+    def test_zero_timestamp_not_replaced(self):
+        """timestamp=0.0 is a valid epoch value and must not be overwritten."""
+        cache = PriceCache()
+        update = cache.update("AAPL", 190.00, timestamp=0.0)
+        assert update.timestamp == 0.0
+
+    def test_remove_bumps_version(self):
+        """Removing a ticker must increment the version so SSE detects it."""
+        cache = PriceCache()
+        cache.update("AAPL", 190.00)
+        v_before = cache.version
+        cache.remove("AAPL")
+        assert cache.version == v_before + 1
+
+    def test_remove_nonexistent_does_not_bump_version(self):
+        """Removing a ticker that isn't in the cache must not change the version."""
+        cache = PriceCache()
+        v = cache.version
+        cache.remove("NOPE")
+        assert cache.version == v
+
+    def test_concurrent_writes(self):
+        """Thread safety: concurrent writers must not corrupt the cache."""
+        import threading
+
+        cache = PriceCache()
+        errors: list[Exception] = []
+
+        def write_worker(ticker: str, iterations: int) -> None:
+            for i in range(iterations):
+                try:
+                    cache.update(ticker, 100.0 + i)
+                except Exception as exc:
+                    errors.append(exc)
+
+        threads = [
+            threading.Thread(target=write_worker, args=(f"T{i}", 500))
+            for i in range(6)
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert not errors
+        assert len(cache) == 6

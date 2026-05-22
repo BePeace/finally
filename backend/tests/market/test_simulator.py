@@ -129,3 +129,30 @@ class TestGBMSimulator:
         if '.' in price_str:
             decimal_part = price_str.split('.')[1]
             assert len(decimal_part) <= 2
+
+    def test_full_default_watchlist_cholesky(self):
+        """All 10 default tickers build a valid correlation matrix and run 100 steps."""
+        from app.market.seed_prices import SEED_PRICES
+
+        tickers = list(SEED_PRICES.keys())
+        assert len(tickers) == 10
+
+        sim = GBMSimulator(tickers=tickers)
+        assert sim._cholesky is not None, "Cholesky must be computed for 10 tickers"
+        assert sim._cholesky.shape == (10, 10)
+
+        for _ in range(100):
+            prices = sim.step()
+            for ticker, price in prices.items():
+                assert price > 0, f"{ticker} went negative"
+                assert price < 1_000_000, f"{ticker} exploded"
+
+    def test_get_tickers_returns_list(self):
+        """get_tickers() must return a plain list, not an internal reference."""
+        sim = GBMSimulator(tickers=["AAPL", "GOOGL"])
+        result = sim.get_tickers()
+        assert isinstance(result, list)
+        assert set(result) == {"AAPL", "GOOGL"}
+        # Mutating the returned list must not affect the simulator
+        result.clear()
+        assert len(sim.get_tickers()) == 2
